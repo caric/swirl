@@ -4,56 +4,64 @@
 	Kevin Geiss
 	4-5-96
 
-	this program requires a math coprocessor. if you don't
-	have one, you have to use the emulator (emu387).
-
-	It should find it automatically if you have go32.exe and emu387
-	in the same directory as this program. If it doesn't, tell it where
-	to look with
-
-set go32=emu <path>/emu387
-
-	replace <path> with the pathname of the directory where emu387 is. Note
-	that you must use the ``/'' character between directory names instead
-	of the standard ``\''.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <grx.h>
+extern "C" {
+#include <gtk/gtk.h>
+}
 #include <math.h>
 
-#include "constant.h"
+#include "constant.H"
 
-extern int kbhit();
+//extern int kbhit();
+extern int delay, range, height, width, numColors, mode;
+extern double x, y, s1, s2;
+extern GdkPixmap *pixmap;
 
-void swirl( int w, int h, double a, double b, double s1, 
-	double s2, int c, int func() )
+/* Draw a rectangle on the screen */
+gint draw_brush (GtkWidget *widget, gdouble mouseX, gdouble mouseY)
 {
-	register double i, j;
+  GdkRectangle update_rect;
+
+	static double i = 0.0, j = 0.0;
 	double ratio;
-	double x, y;
 	double x_trans, y_trans, x_scale, y_scale;
+  double X, Y;
+  int counter;
+  const int numIterations = 1000;
 
-/* calculate scaling and translation factors */
-	ratio =  ((double)w) / ((double)h) ;
-	x_trans = w / TRANS;
-	y_trans = h / TRANS;
-	x_scale = w / SCALE;
-	y_scale = h / (SCALE / ratio);
+  /* calculate scaling and translation factors */
+	ratio =  ((double)width) / ((double)height) ;
+	x_trans = width / TRANS;
+	y_trans = height / TRANS;
+	x_scale = width / SCALE;
+	y_scale = height / (SCALE / ratio);
 
-/* plot */
-	for ( i = j = 0.0; !kbhit(); i += a, j += b )
+  /* plot */
+	for ( counter = 0; counter < numIterations; counter++, i += x, j += y )
 	{
-		x = s1*sin(i) + s2*cos(j);
-		y = s1*cos(i) + s2*sin(j);
+		X = (int)(x_scale * (s1*sin(i) + s2*cos(j)) + x_trans);
+		Y = (int)(y_scale * (s1*cos(i) + s2*sin(j)) + y_trans);
 
-		GrPlot ( (int)(x_scale * (x) + x_trans), 
-			(int)(y_scale * (y) + y_trans), c );
-		if ( !( ((int)i) % 4 ) )
-		{
-			if ( func() )
-				break;
-		}	
+    update_rect.x = X;
+    update_rect.y = Y;
+    update_rect.width = 1;
+    update_rect.height = 1;
+    gdk_draw_rectangle (pixmap,
+            widget->style->black_gc,
+            //widget->style->green_gc,
+            TRUE,
+            update_rect.x, update_rect.y,
+            update_rect.width, update_rect.height);
+    gtk_widget_draw (widget, &update_rect);
 	}
+  return 1;
+}
+
+extern GtkWidget *vbox;
+gint swirl( gpointer data )
+{
+  return draw_brush( vbox, 0, 0 );
 }

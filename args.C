@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <grx.h>
+//#include <grx.h>
 #include <math.h>
+#include <string.h>
 
-#include "constant.h"
+#include "constant.H"
 
 void get_args ( int argc, char *argv[], int *delay, int *range, double *x, 
 	double *y, int *color, int *mode, int *height, int *width, int *numColors )
@@ -71,6 +72,7 @@ void get_args ( int argc, char *argv[], int *delay, int *range, double *x,
 		}
 		else
 		{
+      #if 0
 			puts ("syntax: ");
 			printf ("\nswirl ");
 			printf ("[%s <mode: loop|single>] ", MODE_FLAG );
@@ -102,6 +104,22 @@ void get_args ( int argc, char *argv[], int *delay, int *range, double *x,
 	
 			printf ("\n\nduring plot, hit RETURN to halt. hit RETURN again to"
 				" enter text mode.\n" );
+      #endif
+			puts ("syntax: ");
+			printf ("\nswirl ");
+			printf ("[%s <x>] ", X_FLAG );
+			printf ("[%s <y>] ", Y_FLAG );
+      printf ( "\n      " );
+			printf ("[%s <drawing window width>] ", WIDTH_FLAG );
+			printf ("[%s <drawing window height>] ", HEIGHT_FLAG );
+		
+			printf ("\n\ndefaults:\n");
+			printf ("[%s %f] ", X_FLAG, DEFAULT_X );
+			printf ("[%s %f] ", Y_FLAG, DEFAULT_Y );
+			printf ("[%s %d] ", WIDTH_FLAG, DEFAULT_WIDTH );
+			printf ("[%s %d] ", HEIGHT_FLAG, DEFAULT_HEIGHT );
+      puts( "" );
+	
 			exit ( 0 );
 		}
 	}

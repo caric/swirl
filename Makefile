@@ -5,32 +5,34 @@ DEST=swirl
 CC=gcc
 CXX=g++
 #CXXFLAGS=-I/progra~1/dosapps/djgpp/include/stl
-CXXFLAGS=-g
-CFLAGS=
+CXXFLAGS=-I/usr/X11R6/include -I/usr/lib/glib/include -I/usr/include
+CFLAGS=-I/usr/X11R6/include -I/usr/lib/glib/include -I/usr/include
 
 ##########################
-FLAGS=$(CFLAGS)
-COMP=$(CC)
+FLAGS=$(CXXFLAGS)
+COMP=$(CXX)
 DFILE=.makedepend
 MKFILE=Makefile
-EXT=c
+EXT=C
 DEPEND=-MM
 LINKFLAGS=
 
 .SUFFIXES:	.$(EXT)
 
 #LIB=-lcurses
-LIB=-lm
+LIB=-lm `gtk-config --libs`
 
-HDR=	constants.h
+HDR=	constant.H
 
 SRC=	swirl.$(EXT) \
 	main.$(EXT) \
-	args.$(EXT)
+	args.$(EXT) \
+	scribble-simple.$(EXT)
 
 OBJS=	swirl.o \
 	main.o \
-	args.o
+	args.o \
+	scribble-simple.o
 
 ##########################
 
