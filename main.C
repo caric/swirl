@@ -1,74 +1,374 @@
+/* Kevin Geiss kevin@desertsol.com http://www.desertsol.com/~kevin */
+/* released under the GPL */
 #include <stdio.h>
 #include <stdlib.h>
-//#include <grx.h>
-#include <math.h>
+#include <string.h>
 #include <time.h>
 
-#include "constant.H"
+#include <sys/time.h>
+#include <unistd.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/keysym.h>
 
-//extern int kbhit();
-//extern void swirl ( int, int, double, double, double, double, int );
-extern void get_args ( int argc, char *argv[], int *delay, int *range,
-	double *x, double *y, int *color, int *mode, 
-	int *height, int *width, int *numColors );
+//#define WINDOW_WIDTH 64
+//#define WINDOW_HEIGHT 64
 
-int n = 0; /* num colors */
-int color = 0; /* drawing color */
-int delay, range, height, width, numColors, mode;
-time_t start;
-double x, y, s1 = 7.0, s2 = 2.0;
+void swirl( const int width, const int height,
+            Display *display, GC gc, Window win,
+            unsigned long bg, unsigned long fg );
 
-int elapsed()
+void process_event(XEvent report, int& quit );
+
+long elapsed( timeval& start )
 {
-	time_t now;
-	
-	now = time ( NULL );
+  timeval now;
+  long diff;
+  const long usecs = 1000000;
 
-	if ( now - start >= delay )
-		return 1;
-	else
-		return 0;
+  gettimeofday( &now, NULL );
+  diff = usecs * (now.tv_sec - start.tv_sec) +
+                 now.tv_usec - start.tv_usec;
+
+  start = now;
+  return diff;
 }
 
-double param ()
+long delay( long target )
 {
-	int i = random();
+  const long usecs = 1000000;
 
-	return (double) ( (-1 * (i%2)) * ((random() % range) + 1) ); 
+  // Handle system suspend.
+  if ( target / usecs > 1 )
+    target = -1;
+
+  if ( target > 0 )
+  {
+    timeval t;
+    t.tv_usec = target % usecs;
+    t.tv_sec = target / usecs;
+    select( 0, NULL, NULL, NULL, &t );
+  }
+  return target > 0 ? target : 0;
 }
 
-void loop()
+struct ColorTable
 {
-	srandom ( time ( NULL ) );
-	while ( 1 )
-	{
-		start = time ( NULL );
-		do
-		{
-			x = param();
-			y = param();
-		} while ( (x == y) || (!x) || (!y) );
+  int pixel;
+  int r, g, b;
+};
 
-		//GrClearScreen(0);
-		color = (random() % (n-1)) + 1;
-		//swirl ( width, height, x, y, s1, s2, color );
-	}
+void alloc_color( int i, int r, int g, int b,
+                  Display *display,
+                  Colormap &cmap,
+                  ColorTable* idx,
+                  const int ctableSize,
+                  int screen,
+                  Window win )
+{
+  XColor col;
+
+  col.red = r; col.green = g; col.blue = b;
+  col.flags = DoRed | DoGreen | DoBlue;
+  if (XAllocColor(display, cmap, &col))
+  {
+    idx[i].pixel = col.pixel;
+  }else
+  {
+    if (cmap == DefaultColormap(display, screen))
+    {
+      cmap = XCopyColormapAndFree(display, cmap);
+      XSetWindowColormap(display, win, cmap);
+      col.red = r; col.green = g; col.blue = b;
+      col.flags = DoRed | DoGreen | DoBlue;
+      if (XAllocColor(display, cmap, &col))
+      {
+        idx[i].pixel = col.pixel;
+      }
+    }
+  }
 }
 
-void single()
+int get_color(char *col,
+              ColorTable* idx,
+              const int ctableSize,
+              Display *display,
+              Colormap cmap )
 {
-	//swirl ( width, height, x, y, s1, s2, color );
+  int i, cindx;
+  double rd, gd, bd, dist, mindist;
+  XColor color;
+  XColor def_colrs[256];
+
+  // create a color from the input string
+  XParseColor(display, cmap, col, &color);
+
+  // find closest match
+  cindx = -1;
+  mindist = 196608.0;             // 256.0 * 256.0 * 3.0
+  for (i=0; i<256; i++)
+  {
+    rd = (idx[i].r - color.red) / 256.0;
+    gd = (idx[i].g - color.green) / 256.0;
+    bd = (idx[i].b - color.blue) / 256.0;
+    dist = (rd * rd) + (gd * gd) + (bd * bd);
+    if (dist < mindist)
+    {
+      mindist = dist;
+      cindx = idx[i].pixel;
+      if (dist == 0.0) break;
+    }
+  }
+  return cindx;
 }
 
-void swirlmain(int argc, char *argv[])
+void help()
 {
+  printf("usage: swirl [-w]\n\n-w: Create X window in withdrawn state.\n");
+  exit(1);
+}
 
-/* get command line arguments */
-	get_args ( argc, argv, &delay, &range, &x, &y, &color, &mode, &height, 
-		&width, &numColors );
+int main(int argc, char *argv[])
+{
+  unsigned int width, height;
+  Display *display;
+  int screen;
+  int depth;
+  Window win;
+  Colormap cmap;
+  const int ctableSize = 256;
+  ColorTable idx[ ctableSize ];
+  int quit = 0;
+  GC gc, copygc;
+  Pixmap buffer;
+  bool withdrawn = false;
+  const char *const withdrawnFlag = "-w";
+  const char *const helpFlag = "-h";
+  const int dockWidth = 64, dockHeight = 64;
+  const int winWidth = 400, winHeight = 400;
+  unsigned long bg, fg;
+  srand( time(NULL) );
 
-	printf ("color depth: %d\n", n);
-	printf ("last color used: %d\n", color );
-	printf ("screen resolution (width x height): (%4d x %4d)\n", width, height );
-	printf ("final plot parameters (x,y): (%f, %f)\n", x, y );
+  double x = -0.000400;
+  double y =  0.000900;
+
+  if ( argc >= 2 )
+  {
+    for ( int i = 1; i < argc; i++ )
+    {
+      if ( !strcmp( argv[i], withdrawnFlag ) )
+        withdrawn = true;
+      else
+        help();
+    }
+  }
+
+  // create
+  char *window_name = "Swirl";
+  char *icon_name = "Swirl";
+  static XSizeHints size_hints;
+  XWMHints    mywmhints;
+  Window rootwin;
+
+  if ( withdrawn )
+  {
+    width = dockWidth;
+    height = dockHeight;
+  }
+  else
+  {
+    width = winWidth;
+    height = winHeight;
+  }
+  display = XOpenDisplay(NULL);
+
+  if (display == NULL)
+  {
+    fprintf(stderr, "Failed to open display\n");
+    return 0;
+  }
+
+  screen = DefaultScreen(display);
+  depth = DefaultDepth(display, screen);
+  cmap = DefaultColormap(display, screen);
+  rootwin = RootWindow(display, screen);
+  bg = BlackPixel(display, screen);
+  win = XCreateSimpleWindow(display, rootwin, 10, 10, width, height, 5,
+    bg, bg );
+
+  // Set up the colormap.
+  XSetWindowColormap(display, win, cmap);
+
+  int i, j, k;
+  //int r, g, b;
+  int count = 0;
+
+  for (i=0; i<256; i++) idx[i].pixel = 0;
+
+  for (i=0; i<5; i++)
+    for (j=0; j<5; j++)
+      for (k=0; k<5; k++)
+      {
+        idx[count].r = 65535 - (i*16384); if(idx[count].r<0) idx[count].r=0;
+        idx[count].g = 65535 - (j*16384); if(idx[count].g<0) idx[count].g=0;
+        idx[count].b = 65535 - (k*16384); if(idx[count].b<0) idx[count].b=0;
+        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
+                    display, cmap, idx, ctableSize, screen, win );
+      }
+
+  for (i=0; i<4; i++)
+    for (j=0; j<4; j++)
+      for (k=0; k<4; k++)
+      {
+        idx[count].r = 60415 - (i*16384); if(idx[count].r<0) idx[count].r=0;
+        idx[count].g = 60415 - (j*16384); if(idx[count].g<0) idx[count].g=0;
+        idx[count].b = 60415 - (k*16384); if(idx[count].b<0) idx[count].b=0;
+        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
+                    display, cmap, idx, ctableSize, screen, win );
+        idx[count].r = 55295 - (i*16384); if(idx[count].r<0) idx[count].r=0;
+        idx[count].g = 55295 - (j*16384); if(idx[count].g<0) idx[count].g=0;
+        idx[count].b = 55295 - (k*16384); if(idx[count].b<0) idx[count].b=0;
+        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
+                    display, cmap, idx, ctableSize, screen, win );
+      }
+
+  unsigned long valuemask = 0;
+  XGCValues values;
+
+  // Create graphics context.
+  gc = XCreateGC(display, win, valuemask, &values);
+  //copygc = XCreateGC(display, win, valuemask, &values);
+  
+  fg = get_color("#0000ff", idx, ctableSize, display, cmap );
+  XSetForeground(display, gc, fg );
+
+  // Set up hints and properties.
+  size_hints.flags = PSize | PMinSize | PMaxSize;
+  size_hints.min_width = width;
+  size_hints.max_width = width;
+  size_hints.min_height = height;
+  size_hints.max_height = height;
+
+  XSetStandardProperties(display, win, window_name, icon_name, None,
+    0, 0, &size_hints); 
+
+  if ( withdrawn )
+  {
+    mywmhints.initial_state = WithdrawnState;
+    mywmhints.icon_window = win;
+    mywmhints.icon_x = size_hints.x;
+    mywmhints.icon_y = size_hints.y;
+    mywmhints.window_group = win;
+    mywmhints.flags = StateHint | IconWindowHint | IconPositionHint | WindowGroupHint;
+    XSetWMHints(display, win, &mywmhints);
+  }
+
+  // Tell X what events we are interested in.
+  XSelectInput(display, win, ButtonPressMask | KeyPressMask);
+  // Get the window displayed.
+  XMapWindow(display, win);
+// Set background to parent's background.
+// XSetWindowBackgroundPixmap( display, win, ParentRelative );
+
+  //buffer = XCreatePixmap(display, win, WINDOW_WIDTH, WINDOW_HEIGHT, depth);
+
+  timeval start;
+  long howLongAgo, lastPause;
+  const long framelength = 50000; // useconds
+  gettimeofday( &start, NULL );
+  // eventloop
+  while ( !quit )
+  {
+    XEvent xev;
+    int i, num_events;
+
+    // Calculate how long it's been since last time.
+    howLongAgo = elapsed( start );
+    // Delay for framelength - ( howLongAgo + lastPause ) usecs
+    lastPause = delay( framelength - ( howLongAgo + lastPause) );
+
+    #if 0
+      // Draw the rectangles on the pixmap.
+      XSetForeground(display, gc, get_color("#000000", idx, ctableSize, 
+                                            display, cmap ));
+      XFillRectangle(display, buffer, gc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+      XSetForeground(display, gc, get_color("#ff0000", idx, ctableSize,
+                                            display, cmap ));
+      XFillRectangle(display, buffer, gc, 10, 10, 100, 100);
+      XSetForeground(display, gc, get_color("#00ff00", idx, ctableSize,
+                                            display, cmap ));
+      XFillRectangle(display, buffer, gc, 60, 60, 100, 100);
+      XSetForeground(display, gc, get_color("#0000ff", idx, ctableSize,
+                                            display, cmap ));
+      XFillRectangle(display, buffer, gc, 110, 110, 100, 100);
+
+      // Tile the window with the pixmap.
+      XSetFillStyle(display, copygc, FillTiled);
+      XSetTile(display, copygc, buffer);
+      XFillRectangle(display, win, copygc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    #endif
+    swirl( width, height, display, gc, win, bg, fg );
+    
+    //XFlush(display);
+    num_events = XPending(display);
+    while((num_events != 0))
+    {
+      num_events--;
+      XNextEvent(display, &xev);
+      process_event(xev, quit );
+    }
+  }
+
+  // close
+  XCloseDisplay(display);
+
+  return 0;
+}
+
+
+void process_event(XEvent report, int& quit )
+{
+  KeySym key;
+
+  switch(report.type)
+  {
+    case KeyPress:
+      key = XLookupKeysym(&report.xkey, 0);
+      switch(key)
+      {
+        case(XK_KP_4):
+        case(XK_Left):
+        case(XK_KP_Left):
+          printf("Left\n");
+          break;
+        case(XK_KP_6):
+        case(XK_Right):
+        case(XK_KP_Right):
+          printf("Right\n");
+          break;
+        case(XK_KP_8):
+        case(XK_Up):
+        case(XK_KP_Up):
+          printf("Up\n");
+          break;
+        case(XK_KP_2):
+        case(XK_Down):
+        case(XK_KP_Down):
+          printf("Down\n");
+          break;
+        case(XK_q):
+          printf("q\n");
+          quit = 1;
+          break;
+        default: break;
+      }
+      break;
+
+    case ButtonPressMask:
+      printf("You pressed button %d\n", report.xbutton.button);
+      break;
+
+    default:
+      break;
+  }
 }

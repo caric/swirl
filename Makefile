@@ -1,60 +1,66 @@
-# Makefile for g++
+# Makefile for a binary
 
+# This should be the target of this Makefile.
 DEST=swirl
 
 CC=gcc
 CXX=g++
-#CXXFLAGS=-I/progra~1/dosapps/djgpp/include/stl
-CXXFLAGS=-I/usr/X11R6/include -I/usr/lib/glib/include -I/usr/include
-CFLAGS=-I/usr/X11R6/include -I/usr/lib/glib/include -I/usr/include
+CXXFLAGS=-g -I/usr/X11R6/include/X11 -I/usr/X11R6/include
+CFLAGS=
+AR=ar
+ARFLAGS=-cr
+RFLAG=-C
 
 ##########################
 FLAGS=$(CXXFLAGS)
 COMP=$(CXX)
-DFILE=.makedepend
 MKFILE=Makefile
 EXT=C
-DEPEND=-MM
+DEPEND=-M
 LINKFLAGS=
 
 .SUFFIXES:	.$(EXT)
 
-#LIB=-lcurses
-LIB=-lm `gtk-config --libs`
+# This variable should contain all the subdirectories you want to have
+# recursively made.
+DIRS=
 
-HDR=	constant.H
+# This variable contains all the libraries you want linked in.
+LIBS=-L/usr/X11R6/lib -lX11
 
-SRC=	swirl.$(EXT) \
-	main.$(EXT) \
-	args.$(EXT) \
-	scribble-simple.$(EXT)
+HDR=	\
 
-OBJS=	swirl.o \
-	main.o \
-	args.o \
-	scribble-simple.o
+
+SRC=	\
+	main.$(EXT)	\
+	swirl.$(EXT)	\
+
+
+OBJS=	$(subst .$(EXT),.o,$(SRC))
+
+DEPFILES=	$(subst .$(EXT),.d,$(SRC))
 
 ##########################
 
-all:	$(DEST)
+all:	$(DEST) $(DEPFILES)
 	@echo done.
 
-$(DEST):	$(OBJS)
-	$(COMP) $(LINKFLAGS) -o $(DEST) $(OBJS) $(LIB)
+sub:	$(DEST) $(DEPFILES)
+	for name in $(DIRS); do $(MAKE) $(RFLAG) $$name $@; done
 
-%.o:	%.$(EXT) $(MKFILE) $(DFILE)
+$(DEST):	$(OBJS)
+	$(COMP) $(LINKFLAGS) -o $(DEST) $(OBJS) $(LIBS)
+
+%.o:	%.$(EXT)
 	$(COMP) $(FLAGS) -c $<
 
-$(DFILE):	$(MKFILE)
-	$(COMP) $(DEPEND) $(FLAGS) $(SRC) > $(DFILE)
-	make
-
-depend:
-	$(COMP) $(DEPEND) $(FLAGS) $(SRC) > $(DFILE)
+%.d:	%.$(EXT)
+	$(SHELL) -ec '$(COMP) $(DEPEND) $(FLAGS) $< \
+		| sed "s/\($*\.o\)[ :]*/\1 $@ : /g" > $@'
 
 clean:
 	rm -f *.o 
 	rm -f $(DEST)
-	rm -f $(DFILE)
+	rm -f $(DEPFILES)
 
-include $(DFILE)
+include $(DEPFILES)

@@ -1,67 +1,71 @@
-/* 
-	neat swirly patterns
-
-	Kevin Geiss
-	4-5-96
-
-*/
-
+/* Kevin Geiss kevin@desertsol.com http://www.desertsol.com/~kevin */
+/* released under the GPL */
 #include <stdio.h>
 #include <stdlib.h>
-extern "C" {
-#include <gtk/gtk.h>
-}
 #include <math.h>
 
-#include "constant.H"
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
-//extern int kbhit();
-extern int delay, range, height, width, numColors, mode;
-extern double x, y, s1, s2;
-extern GdkPixmap *pixmap;
-
-/* Draw a rectangle on the screen */
-gint draw_brush (GtkWidget *widget, gdouble mouseX, gdouble mouseY)
+double param ()
 {
-  GdkRectangle update_rect;
+  const int range = 15;
+  const int fpRange = 2;
+  int sign = rand();
+  double result;
+  double decimal;
 
-	static double i = 0.0, j = 0.0;
-	double ratio;
-	double x_trans, y_trans, x_scale, y_scale;
-  double X, Y;
-  int counter;
-  const int numIterations = 1000;
-
-  /* calculate scaling and translation factors */
-	ratio =  ((double)width) / ((double)height) ;
-	x_trans = width / TRANS;
-	y_trans = height / TRANS;
-	x_scale = width / SCALE;
-	y_scale = height / (SCALE / ratio);
-
-  /* plot */
-	for ( counter = 0; counter < numIterations; counter++, i += x, j += y )
-	{
-		X = (int)(x_scale * (s1*sin(i) + s2*cos(j)) + x_trans);
-		Y = (int)(y_scale * (s1*cos(i) + s2*sin(j)) + y_trans);
-
-    update_rect.x = X;
-    update_rect.y = Y;
-    update_rect.width = 1;
-    update_rect.height = 1;
-    gdk_draw_rectangle (pixmap,
-            widget->style->black_gc,
-            //widget->style->green_gc,
-            TRUE,
-            update_rect.x, update_rect.y,
-            update_rect.width, update_rect.height);
-    gtk_widget_draw (widget, &update_rect);
-	}
-  return 1;
+  result = (double) ( (-1 * (sign%2)) * ((rand() % range) + 1) );
+  decimal = pow( 10, -1 * (rand() % fpRange) );
+  return result * decimal;
 }
 
-extern GtkWidget *vbox;
-gint swirl( gpointer data )
+void swirl( const int width, const int height,
+            Display *display, GC gc, Window win,
+            unsigned long bg, unsigned long fg )
 {
-  return draw_brush( vbox, 0, 0 );
+  static double i = 0.0, j = 0.0;
+  static int num = 0;
+  static double x = -0.000400, y = 0.000900;
+  const int max = 400;
+
+  double ratio;
+  double x_trans, y_trans, x_scale, y_scale;
+  int X, Y;
+  int counter;
+  
+  const double s1 = 7.0, s2 = 2.0;
+  const int numIterations = 1000;
+  const double TRANS = 2.0;
+  const double SCALE = 24.0;
+
+  if ( ++num > max )
+  {
+    do {
+      x = param();
+      y = param();
+    } while ( (x == 0.0) || (y == 0.0) || (fabs(x - y) <= .001) );
+ //printf( "x: %lf; y: %lf\n", x, y );
+    num = 0;
+    // Clear the window.
+    XSetForeground( display, gc, bg );
+    XFillRectangle( display, win, gc, 0, 0, width, height );
+    XSetForeground( display, gc, fg );
+  }
+
+  /* calculate scaling and translation factors */
+  ratio =  ((double)width) / ((double)height) ;
+  x_trans = width / TRANS;
+  y_trans = height / TRANS;
+  x_scale = width / SCALE;
+  y_scale = height / (SCALE / ratio);
+
+  /* plot */
+  for ( counter = 0; counter < numIterations; counter++, i += x, j += y )
+  {
+    X = (int)(x_scale * (s1*sin(i) + s2*cos(j)) + x_trans);
+    Y = (int)(y_scale * (s1*cos(i) + s2*sin(j)) + y_trans);
+
+    XDrawPoint( display, win, gc, X, Y );
+  }
 }
