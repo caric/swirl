@@ -1,5 +1,3 @@
-/* Kevin Geiss kevin@desertsol.com http://www.desertsol.com/~kevin */
-/* released under the GPL */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +8,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <X11/xpm.h>
 
 //#define WINDOW_WIDTH 64
 //#define WINDOW_HEIGHT 64
@@ -62,12 +61,14 @@ void alloc_color( int i, int r, int g, int b,
                   Display *display,
                   Colormap &cmap,
                   ColorTable* idx,
+                  Pixel *pixels,
                   const int ctableSize,
                   int screen,
                   Window win )
 {
   XColor col;
 
+#if 0
   col.red = r; col.green = g; col.blue = b;
   col.flags = DoRed | DoGreen | DoBlue;
   if (XAllocColor(display, cmap, &col))
@@ -87,6 +88,13 @@ void alloc_color( int i, int r, int g, int b,
       }
     }
   }
+#endif
+
+  col.red = r; col.green = g; col.blue = b;
+  col.flags = DoRed | DoGreen | DoBlue;
+  idx[i].pixel = col.pixel = pixels[ i ];
+printf( "i: %d\n", i );
+  XStoreColor( display, cmap, &col );
 }
 
 int get_color(char *col,
@@ -122,12 +130,6 @@ int get_color(char *col,
   return cindx;
 }
 
-void help()
-{
-  printf("usage: swirl [-w]\n\n-w: Create X window in withdrawn state.\n");
-  exit(1);
-}
-
 int main(int argc, char *argv[])
 {
   unsigned int width, height;
@@ -143,10 +145,10 @@ int main(int argc, char *argv[])
   Pixmap buffer;
   bool withdrawn = false;
   const char *const withdrawnFlag = "-w";
-  const char *const helpFlag = "-h";
   const int dockWidth = 64, dockHeight = 64;
   const int winWidth = 400, winHeight = 400;
   unsigned long bg, fg;
+  const int numColors = ctableSize;
   srand( time(NULL) );
 
   double x = -0.000400;
@@ -158,8 +160,6 @@ int main(int argc, char *argv[])
     {
       if ( !strcmp( argv[i], withdrawnFlag ) )
         withdrawn = true;
-      else
-        help();
     }
   }
 
@@ -195,9 +195,17 @@ int main(int argc, char *argv[])
   bg = BlackPixel(display, screen);
   win = XCreateSimpleWindow(display, rootwin, 10, 10, width, height, 5,
     bg, bg );
+  //cmap = XCreateColormap( display, win, TrueColor, AllocNone );
 
   // Set up the colormap.
   XSetWindowColormap(display, win, cmap);
+  // Allocate our changeable color cells.
+  Pixel pixels[ numColors ];
+  if( 0 == XAllocColorCells( display, cmap, 0, NULL, 0, pixels, numColors ) )
+  {
+    printf( "Failure allocating color cells.\n" );
+    return -1;
+  }
 
   int i, j, k;
   //int r, g, b;
@@ -213,7 +221,7 @@ int main(int argc, char *argv[])
         idx[count].g = 65535 - (j*16384); if(idx[count].g<0) idx[count].g=0;
         idx[count].b = 65535 - (k*16384); if(idx[count].b<0) idx[count].b=0;
         alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
+                    display, cmap, idx, pixels, ctableSize, screen, win );
       }
 
   for (i=0; i<4; i++)
@@ -224,13 +232,14 @@ int main(int argc, char *argv[])
         idx[count].g = 60415 - (j*16384); if(idx[count].g<0) idx[count].g=0;
         idx[count].b = 60415 - (k*16384); if(idx[count].b<0) idx[count].b=0;
         alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
+                    display, cmap, idx, pixels, ctableSize, screen, win );
         idx[count].r = 55295 - (i*16384); if(idx[count].r<0) idx[count].r=0;
         idx[count].g = 55295 - (j*16384); if(idx[count].g<0) idx[count].g=0;
         idx[count].b = 55295 - (k*16384); if(idx[count].b<0) idx[count].b=0;
         alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
+                    display, cmap, idx, pixels, ctableSize, screen, win );
       }
+  printf( "colors: %d\n", count );
 
   unsigned long valuemask = 0;
   XGCValues values;
