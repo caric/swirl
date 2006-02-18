@@ -152,7 +152,6 @@ int main(int argc, char *argv[])
   int quit = 0;
 
   char *window_name = "Swirl";
-  char *icon_name = "Swirl";
 
   const int dockWidth = 64, dockHeight = 64;
   const int winWidth = 400, winHeight = 400;
@@ -191,8 +190,6 @@ int main(int argc, char *argv[])
   }
 
   int screen = DefaultScreen(display);
-  int depth = DefaultDepth(display, screen);
-  Colormap cmap = DefaultColormap(display, screen);
   Window rootwin = RootWindow(display, screen);
 
   static XSizeHints size_hints;
