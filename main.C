@@ -213,8 +213,15 @@ int main(int argc, char *argv[])
   XSetWMNormalHints(display, win, &size_hints);
   XClassHint classhint;
   classhint.res_name = window_name;
-  char resolved_path[PATH_MAX+1];
-  classhint.res_class = realpath(argv[0], resolved_path); // this tells kicker how to run it; probably a hack; need to set up some X resources to do this for real. this should be the WM_CLASS name in X resources
+
+  // this tells kicker how to run it.
+  // probably a hack.
+  // need to set up some X resources to do this for real.
+  // this should be the WM_CLASS name in X resources
+  char resolved_path[PATH_MAX+1 + 3];
+  realpath(argv[0], resolved_path);
+  if ( withdrawn ) strcat( resolved_path, " -w" );
+  classhint.res_class = resolved_path;
   XSetClassHint(display, win, &classhint);
 
   // Tell X what events we are interested in.
