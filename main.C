@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
   size_hints.height = height;
 
   unsigned long bg = BlackPixel(display, screen);
-  unsigned long fg = WhitePixel(display, screen);
+  unsigned long fg = get_color(display, "blue" );
 
   Window win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
     fg, bg );
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
   values.graphics_exposures = 0;
 #endif
   XGCValues gcval;
-  gcval.foreground = get_color(display, "blue" );
+  gcval.foreground = fg;
   gcval.background = bg;
   gcval.graphics_exposures = 0;
   // Create graphics context.
