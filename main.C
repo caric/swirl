@@ -203,9 +203,9 @@ int main(int argc, char *argv[])
   unsigned long fg = get_color(display, "blue" );
 
   Window win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
-    fg, bg );
+    WhitePixel(display, screen), bg );
   Window iconwin = XCreateSimpleWindow(display, win, 0, 0, width, height, 0,
-    fg, bg );
+    WhitePixel(display, screen), bg );
 
   XSetWMNormalHints(display, win, &size_hints);
   XClassHint classhint;
