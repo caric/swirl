@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
   int screen;
   int depth;
   Window win;
+  Window iconwin;
   Colormap cmap;
   const int ctableSize = 256;
   ColorTable idx[ ctableSize ];
@@ -189,11 +190,28 @@ int main(int argc, char *argv[])
   cmap = DefaultColormap(display, screen);
   rootwin = RootWindow(display, screen);
   bg = BlackPixel(display, screen);
-  win = XCreateSimpleWindow(display, rootwin, 10, 10, width, height, 5,
+
+  size_hints.flags = USSize|USPosition;
+  size_hints.x = 0;
+  size_hints.y = 0;
+	//XWMGeometry(display, screen, Geometry, NULL, borderwidth, &size_hints,
+				//&size_hints.x, &size_hints.y,&size_hints.width,&size_hints.height, &dummy);
+
+  win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
+    bg, bg );
+  iconwin = XCreateSimpleWindow(display, win, 0, 0, width, height, 0,
     bg, bg );
 
+  size_hints.x = width;
+  size_hints.y = height;
+    XSetWMNormalHints(display, win, &size_hints);
+    //XSetClassHint(display, win, &classhint);
   // Set up the colormap.
   XSetWindowColormap(display, win, cmap);
+
+  // Tell X what events we are interested in.
+  XSelectInput(display, win, ButtonPressMask | KeyPressMask);
+  XSelectInput(display, iconwin, ButtonPressMask | KeyPressMask);
 
   int i, j, k;
   int count = 0;
@@ -227,30 +245,35 @@ int main(int argc, char *argv[])
                     display, cmap, idx, ctableSize, screen, win );
       }
 
-  unsigned long valuemask = 0;
+  unsigned long valuemask = GCForeground|GCBackground|GCGraphicsExposures;
   XGCValues values;
+  fg = get_color("#0000ff", idx, ctableSize, display, cmap );
+  values.foreground = fg;
+  values.background = bg;
+  values.graphics_exposures = 0;
 
   // Create graphics context.
   gc = XCreateGC(display, win, valuemask, &values);
   //copygc = XCreateGC(display, win, valuemask, &values);
   
-  fg = get_color("#0000ff", idx, ctableSize, display, cmap );
   XSetForeground(display, gc, fg );
 
   // Set up hints and properties.
-  size_hints.flags = PSize | PMinSize | PMaxSize;
-  size_hints.min_width = width;
-  size_hints.max_width = width;
-  size_hints.min_height = height;
-  size_hints.max_height = height;
+  //size_hints.flags = PSize | PMinSize | PMaxSize;
+  //size_hints.min_width = width;
+  //size_hints.max_width = width;
+  //size_hints.min_height = height;
+  //size_hints.max_height = height;
 
-  XSetStandardProperties(display, win, window_name, icon_name, None,
-    0, 0, &size_hints); 
+  //XSetStandardProperties(display, win, window_name, icon_name, None,
+    //0, 0, &size_hints); 
 
   if ( withdrawn )
   {
+	//XShapeCombineMask(display, win, ShapeBounding, 0, 0, pixmask, ShapeSet);
+	//XShapeCombineMask(display, iconwin, ShapeBounding, 0, 0, pixmask, ShapeSet);
     mywmhints.initial_state = WithdrawnState;
-    mywmhints.icon_window = win;
+    mywmhints.icon_window = iconwin;
     mywmhints.icon_x = size_hints.x;
     mywmhints.icon_y = size_hints.y;
     mywmhints.window_group = win;
@@ -258,8 +281,6 @@ int main(int argc, char *argv[])
     XSetWMHints(display, win, &mywmhints);
   }
 
-  // Tell X what events we are interested in.
-  XSelectInput(display, win, ButtonPressMask | KeyPressMask);
   // Get the window displayed.
   XMapWindow(display, win);
 // Set background to parent's background.
