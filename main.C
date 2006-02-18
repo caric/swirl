@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
 
   srand( time(NULL) );
 
+  // read args.
   if ( argc >= 2 )
   {
     for ( int i = 1; i < argc; i++ )
