@@ -181,8 +181,6 @@ int main(int argc, char *argv[])
     height = winHeight;
   }
 
-  // create
-
   // Open the DISPLAY.
   Display *display = XOpenDisplay(NULL);
   if (display == NULL)
@@ -225,78 +223,17 @@ int main(int argc, char *argv[])
   XStringListToTextProperty(&window_name, 1, &wname);
   XSetWMName(display, win, &wname);
 
-#if 0
-  // Set up the colormap.
-  XSetWindowColormap(display, win, cmap);
-
-  int i, j, k;
-  int count = 0;
-
-  const int ctableSize = 256;
-  ColorTable idx[ ctableSize ];
-  for (i=0; i<256; i++) idx[i].pixel = 0;
-
-  for (i=0; i<5; i++)
-    for (j=0; j<5; j++)
-      for (k=0; k<5; k++)
-      {
-        idx[count].r = 65535 - (i*16384); if(idx[count].r<0) idx[count].r=0;
-        idx[count].g = 65535 - (j*16384); if(idx[count].g<0) idx[count].g=0;
-        idx[count].b = 65535 - (k*16384); if(idx[count].b<0) idx[count].b=0;
-        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
-      }
-
-  for (i=0; i<4; i++)
-    for (j=0; j<4; j++)
-      for (k=0; k<4; k++)
-      {
-        idx[count].r = 60415 - (i*16384); if(idx[count].r<0) idx[count].r=0;
-        idx[count].g = 60415 - (j*16384); if(idx[count].g<0) idx[count].g=0;
-        idx[count].b = 60415 - (k*16384); if(idx[count].b<0) idx[count].b=0;
-        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
-        idx[count].r = 55295 - (i*16384); if(idx[count].r<0) idx[count].r=0;
-        idx[count].g = 55295 - (j*16384); if(idx[count].g<0) idx[count].g=0;
-        idx[count].b = 55295 - (k*16384); if(idx[count].b<0) idx[count].b=0;
-        alloc_color(count++, idx[count].r, idx[count].g, idx[count].b,
-                    display, cmap, idx, ctableSize, screen, win );
-      }
-
-  XGCValues values;
-  fg = get_color("#0000ff", idx, ctableSize, display, cmap );
-  values.foreground = fg;
-  values.background = bg;
-  values.graphics_exposures = 0;
-#endif
+  // Create graphics context.
   XGCValues gcval;
   gcval.foreground = fg;
   gcval.background = bg;
   gcval.graphics_exposures = 0;
-  // Create graphics context.
   unsigned long valuemask = GCForeground|GCBackground|GCGraphicsExposures;
   GC gc = XCreateGC(display, win, valuemask, &gcval);
-  //copygc = XCreateGC(display, win, valuemask, &values);
   
-#if 0
-  XSetForeground(display, gc, fg );
-
-  // Set up hints and properties.
-  size_hints.flags = PSize | PMinSize | PMaxSize;
-  size_hints.min_width = width;
-  size_hints.max_width = width;
-  size_hints.min_height = height;
-  size_hints.max_height = height;
-
-  XSetStandardProperties(display, win, window_name, icon_name, None,
-    0, 0, &size_hints); 
-#endif
-
   XWMHints    mywmhints;
   if ( withdrawn )
   {
-    //XShapeCombineMask(display, win, ShapeBounding, 0, 0, pixmask, ShapeSet);
-    //XShapeCombineMask(display, iconwin, ShapeBounding, 0, 0, pixmask, ShapeSet);
     mywmhints.initial_state = WithdrawnState;
     mywmhints.icon_window = iconwin;
     mywmhints.icon_x = size_hints.x;
@@ -308,10 +245,6 @@ int main(int argc, char *argv[])
 
   // Get the window displayed.
   XMapWindow(display, win);
-// Set background to parent's background.
-// XSetWindowBackgroundPixmap( display, win, ParentRelative );
-
-  //Pixmap buffer = XCreatePixmap(display, win, WINDOW_WIDTH, WINDOW_HEIGHT, depth);
 
   timeval start;
   long howLongAgo, lastPause;
@@ -330,7 +263,6 @@ int main(int argc, char *argv[])
     else
       swirl( width, height, display, gc, win, bg, fg );
     
-    //XFlush(display);
     XEvent xev;
     int num_events = XPending(display);
     while((num_events != 0))
