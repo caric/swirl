@@ -294,6 +294,7 @@ void process_event(XEvent report, int& quit )
   switch(report.type)
   {
     case KeyPress:
+      // This doesn't work when withdrawn.
       key = XLookupKeysym(&report.xkey, 0);
       switch(key)
       {
@@ -327,6 +328,10 @@ void process_event(XEvent report, int& quit )
 
     case ButtonPressMask:
       printf("You pressed button %d\n", report.xbutton.button);
+      break;
+
+    case ButtonReleaseMask:
+      printf("You Released button %d\n", report.xbutton.button);
       break;
 
     case KeyPressMask:
