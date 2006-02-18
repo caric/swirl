@@ -139,18 +139,14 @@ int main(int argc, char *argv[])
   const int ctableSize = 256;
   ColorTable idx[ ctableSize ];
   int quit = 0;
-  GC gc, copygc;
-  Pixmap buffer;
+  GC gc;
+  //Pixmap buffer;
   bool withdrawn = false;
   const char *const withdrawnFlag = "-w";
-  const char *const helpFlag = "-h";
   const int dockWidth = 64, dockHeight = 64;
   const int winWidth = 400, winHeight = 400;
   unsigned long bg, fg;
   srand( time(NULL) );
-
-  double x = -0.000400;
-  double y =  0.000900;
 
   if ( argc >= 2 )
   {
@@ -200,7 +196,6 @@ int main(int argc, char *argv[])
   XSetWindowColormap(display, win, cmap);
 
   int i, j, k;
-  //int r, g, b;
   int count = 0;
 
   for (i=0; i<256; i++) idx[i].pixel = 0;
@@ -280,33 +275,13 @@ int main(int argc, char *argv[])
   while ( !quit )
   {
     XEvent xev;
-    int i, num_events;
+    int num_events;
 
     // Calculate how long it's been since last time.
     howLongAgo = elapsed( start );
     // Delay for framelength - ( howLongAgo + lastPause ) usecs
     lastPause = delay( framelength - ( howLongAgo + lastPause) );
 
-    #if 0
-      // Draw the rectangles on the pixmap.
-      XSetForeground(display, gc, get_color("#000000", idx, ctableSize, 
-                                            display, cmap ));
-      XFillRectangle(display, buffer, gc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-      XSetForeground(display, gc, get_color("#ff0000", idx, ctableSize,
-                                            display, cmap ));
-      XFillRectangle(display, buffer, gc, 10, 10, 100, 100);
-      XSetForeground(display, gc, get_color("#00ff00", idx, ctableSize,
-                                            display, cmap ));
-      XFillRectangle(display, buffer, gc, 60, 60, 100, 100);
-      XSetForeground(display, gc, get_color("#0000ff", idx, ctableSize,
-                                            display, cmap ));
-      XFillRectangle(display, buffer, gc, 110, 110, 100, 100);
-
-      // Tile the window with the pixmap.
-      XSetFillStyle(display, copygc, FillTiled);
-      XSetTile(display, copygc, buffer);
-      XFillRectangle(display, win, copygc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    #endif
     swirl( width, height, display, gc, win, bg, fg );
     
     //XFlush(display);

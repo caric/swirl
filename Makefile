@@ -5,7 +5,7 @@ DEST=swirl
 
 CC=gcc
 CXX=g++
-CXXFLAGS=-g -I/usr/X11R6/include/X11 -I/usr/X11R6/include
+CXXFLAGS=-g -I/usr/X11R6/include/X11 -I/usr/X11R6/include -Wall
 CFLAGS=
 AR=ar
 ARFLAGS=-cr
