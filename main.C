@@ -89,6 +89,22 @@ void alloc_color( int i, int r, int g, int b,
   }
 }
 
+unsigned long get_color(Display *display, char *color_name)
+{
+  XColor color;
+  XWindowAttributes winattr;
+
+  XGetWindowAttributes(display,
+    RootWindow(display, DefaultScreen(display)), &winattr);
+
+  color.pixel = 0;
+  XParseColor(display, winattr.colormap, color_name, &color);
+
+  color.flags = DoRed | DoGreen | DoBlue;
+  XAllocColor(display, winattr.colormap, &color);
+
+  return color.pixel;
+}
 int get_color(char *col,
               ColorTable* idx,
               const int ctableSize,
@@ -167,6 +183,7 @@ int main(int argc, char *argv[])
 
   // create
 
+  // Open the DISPLAY.
   Display *display = XOpenDisplay(NULL);
   if (display == NULL)
   {
@@ -178,31 +195,39 @@ int main(int argc, char *argv[])
   int depth = DefaultDepth(display, screen);
   Colormap cmap = DefaultColormap(display, screen);
   Window rootwin = RootWindow(display, screen);
-  unsigned long bg = BlackPixel(display, screen);
-  unsigned long fg;
 
   static XSizeHints size_hints;
   size_hints.flags = USSize|USPosition;
   size_hints.x = 0;
   size_hints.y = 0;
-  //XWMGeometry(display, screen, Geometry, NULL, borderwidth, &size_hints,
-        //&size_hints.x, &size_hints.y,&size_hints.width,&size_hints.height, &dummy);
+  size_hints.width = width;
+  size_hints.height = height;
+
+  unsigned long bg = BlackPixel(display, screen);
+  unsigned long fg = WhitePixel(display, screen);
 
   Window win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
-    bg, bg );
+    fg, bg );
   Window iconwin = XCreateSimpleWindow(display, win, 0, 0, width, height, 0,
-    bg, bg );
+    fg, bg );
 
-  size_hints.x = width;
-  size_hints.y = height;
-    XSetWMNormalHints(display, win, &size_hints);
-    //XSetClassHint(display, win, &classhint);
-  // Set up the colormap.
-  XSetWindowColormap(display, win, cmap);
+  XSetWMNormalHints(display, win, &size_hints);
+  XClassHint classhint;
+  classhint.res_name = window_name;
+  classhint.res_class = window_name;
+  XSetClassHint(display, win, &classhint);
 
   // Tell X what events we are interested in.
   XSelectInput(display, win, ButtonPressMask | KeyPressMask);
   XSelectInput(display, iconwin, ButtonPressMask | KeyPressMask);
+
+  XTextProperty wname;
+  XStringListToTextProperty(&window_name, 1, &wname);
+  XSetWMName(display, win, &wname);
+
+#if 0
+  // Set up the colormap.
+  XSetWindowColormap(display, win, cmap);
 
   int i, j, k;
   int count = 0;
@@ -238,17 +263,22 @@ int main(int argc, char *argv[])
                     display, cmap, idx, ctableSize, screen, win );
       }
 
-  unsigned long valuemask = GCForeground|GCBackground|GCGraphicsExposures;
   XGCValues values;
   fg = get_color("#0000ff", idx, ctableSize, display, cmap );
   values.foreground = fg;
   values.background = bg;
   values.graphics_exposures = 0;
-
+#endif
+  XGCValues gcval;
+  gcval.foreground = get_color(display, "blue" );
+  gcval.background = bg;
+  gcval.graphics_exposures = 0;
   // Create graphics context.
-  GC gc = XCreateGC(display, win, valuemask, &values);
+  unsigned long valuemask = GCForeground|GCBackground|GCGraphicsExposures;
+  GC gc = XCreateGC(display, win, valuemask, &gcval);
   //copygc = XCreateGC(display, win, valuemask, &values);
   
+#if 0
   XSetForeground(display, gc, fg );
 
   // Set up hints and properties.
@@ -260,6 +290,7 @@ int main(int argc, char *argv[])
 
   XSetStandardProperties(display, win, window_name, icon_name, None,
     0, 0, &size_hints); 
+#endif
 
   XWMHints    mywmhints;
   if ( withdrawn )
@@ -294,7 +325,10 @@ int main(int argc, char *argv[])
     // Delay for framelength - ( howLongAgo + lastPause ) usecs
     lastPause = delay( framelength - ( howLongAgo + lastPause) );
 
-    swirl( width, height, display, gc, win, bg, fg );
+    if ( withdrawn )
+      swirl( width, height, display, gc, iconwin, bg, fg );
+    else
+      swirl( width, height, display, gc, win, bg, fg );
     
     //XFlush(display);
     XEvent xev;
