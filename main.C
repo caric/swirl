@@ -218,8 +218,9 @@ int main(int argc, char *argv[])
   XSetClassHint(display, win, &classhint);
 
   // Tell X what events we are interested in.
-  XSelectInput(display, win, ButtonPressMask | KeyPressMask);
-  XSelectInput(display, iconwin, ButtonPressMask | KeyPressMask);
+  long input_mask = ButtonPressMask|KeyPressMask|ButtonReleaseMask;
+  XSelectInput(display, win, input_mask );
+  XSelectInput(display, iconwin, input_mask );
 
   XTextProperty wname;
   XStringListToTextProperty(&window_name, 1, &wname);
@@ -322,6 +323,10 @@ void process_event(XEvent report, int& quit )
 
     case ButtonPressMask:
       printf("You pressed button %d\n", report.xbutton.button);
+      break;
+
+    case KeyPressMask:
+      printf("a key mask\n");
       break;
 
     default:
