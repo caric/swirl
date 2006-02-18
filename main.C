@@ -185,8 +185,8 @@ int main(int argc, char *argv[])
   size_hints.flags = USSize|USPosition;
   size_hints.x = 0;
   size_hints.y = 0;
-	//XWMGeometry(display, screen, Geometry, NULL, borderwidth, &size_hints,
-				//&size_hints.x, &size_hints.y,&size_hints.width,&size_hints.height, &dummy);
+  //XWMGeometry(display, screen, Geometry, NULL, borderwidth, &size_hints,
+        //&size_hints.x, &size_hints.y,&size_hints.width,&size_hints.height, &dummy);
 
   Window win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
     bg, bg );
@@ -264,8 +264,8 @@ int main(int argc, char *argv[])
   XWMHints    mywmhints;
   if ( withdrawn )
   {
-	//XShapeCombineMask(display, win, ShapeBounding, 0, 0, pixmask, ShapeSet);
-	//XShapeCombineMask(display, iconwin, ShapeBounding, 0, 0, pixmask, ShapeSet);
+    //XShapeCombineMask(display, win, ShapeBounding, 0, 0, pixmask, ShapeSet);
+    //XShapeCombineMask(display, iconwin, ShapeBounding, 0, 0, pixmask, ShapeSet);
     mywmhints.initial_state = WithdrawnState;
     mywmhints.icon_window = iconwin;
     mywmhints.icon_x = size_hints.x;
