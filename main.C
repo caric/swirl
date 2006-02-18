@@ -130,23 +130,16 @@ void help()
 
 int main(int argc, char *argv[])
 {
-  unsigned int width, height;
-  Display *display;
-  int screen;
-  int depth;
-  Window win;
-  Window iconwin;
-  Colormap cmap;
-  const int ctableSize = 256;
-  ColorTable idx[ ctableSize ];
-  int quit = 0;
-  GC gc;
-  //Pixmap buffer;
   bool withdrawn = false;
   const char *const withdrawnFlag = "-w";
+  int quit = 0;
+
+  char *window_name = "Swirl";
+  char *icon_name = "Swirl";
+
   const int dockWidth = 64, dockHeight = 64;
   const int winWidth = 400, winHeight = 400;
-  unsigned long bg, fg;
+
   srand( time(NULL) );
 
   if ( argc >= 2 )
@@ -159,14 +152,7 @@ int main(int argc, char *argv[])
         help();
     }
   }
-
-  // create
-  char *window_name = "Swirl";
-  char *icon_name = "Swirl";
-  static XSizeHints size_hints;
-  XWMHints    mywmhints;
-  Window rootwin;
-
+  unsigned int width, height;
   if ( withdrawn )
   {
     width = dockWidth;
@@ -177,29 +163,33 @@ int main(int argc, char *argv[])
     width = winWidth;
     height = winHeight;
   }
-  display = XOpenDisplay(NULL);
 
+  // create
+
+  Display *display = XOpenDisplay(NULL);
   if (display == NULL)
   {
     fprintf(stderr, "Failed to open display\n");
     return 0;
   }
 
-  screen = DefaultScreen(display);
-  depth = DefaultDepth(display, screen);
-  cmap = DefaultColormap(display, screen);
-  rootwin = RootWindow(display, screen);
-  bg = BlackPixel(display, screen);
+  int screen = DefaultScreen(display);
+  int depth = DefaultDepth(display, screen);
+  Colormap cmap = DefaultColormap(display, screen);
+  Window rootwin = RootWindow(display, screen);
+  unsigned long bg = BlackPixel(display, screen);
+  unsigned long fg;
 
+  static XSizeHints size_hints;
   size_hints.flags = USSize|USPosition;
   size_hints.x = 0;
   size_hints.y = 0;
 	//XWMGeometry(display, screen, Geometry, NULL, borderwidth, &size_hints,
 				//&size_hints.x, &size_hints.y,&size_hints.width,&size_hints.height, &dummy);
 
-  win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
+  Window win = XCreateSimpleWindow(display, rootwin, 0, 0, width, height, 0,
     bg, bg );
-  iconwin = XCreateSimpleWindow(display, win, 0, 0, width, height, 0,
+  Window iconwin = XCreateSimpleWindow(display, win, 0, 0, width, height, 0,
     bg, bg );
 
   size_hints.x = width;
@@ -216,6 +206,8 @@ int main(int argc, char *argv[])
   int i, j, k;
   int count = 0;
 
+  const int ctableSize = 256;
+  ColorTable idx[ ctableSize ];
   for (i=0; i<256; i++) idx[i].pixel = 0;
 
   for (i=0; i<5; i++)
@@ -253,21 +245,22 @@ int main(int argc, char *argv[])
   values.graphics_exposures = 0;
 
   // Create graphics context.
-  gc = XCreateGC(display, win, valuemask, &values);
+  GC gc = XCreateGC(display, win, valuemask, &values);
   //copygc = XCreateGC(display, win, valuemask, &values);
   
   XSetForeground(display, gc, fg );
 
   // Set up hints and properties.
-  //size_hints.flags = PSize | PMinSize | PMaxSize;
-  //size_hints.min_width = width;
-  //size_hints.max_width = width;
-  //size_hints.min_height = height;
-  //size_hints.max_height = height;
+  size_hints.flags = PSize | PMinSize | PMaxSize;
+  size_hints.min_width = width;
+  size_hints.max_width = width;
+  size_hints.min_height = height;
+  size_hints.max_height = height;
 
-  //XSetStandardProperties(display, win, window_name, icon_name, None,
-    //0, 0, &size_hints); 
+  XSetStandardProperties(display, win, window_name, icon_name, None,
+    0, 0, &size_hints); 
 
+  XWMHints    mywmhints;
   if ( withdrawn )
   {
 	//XShapeCombineMask(display, win, ShapeBounding, 0, 0, pixmask, ShapeSet);
@@ -286,7 +279,7 @@ int main(int argc, char *argv[])
 // Set background to parent's background.
 // XSetWindowBackgroundPixmap( display, win, ParentRelative );
 
-  //buffer = XCreatePixmap(display, win, WINDOW_WIDTH, WINDOW_HEIGHT, depth);
+  //Pixmap buffer = XCreatePixmap(display, win, WINDOW_WIDTH, WINDOW_HEIGHT, depth);
 
   timeval start;
   long howLongAgo, lastPause;
@@ -295,9 +288,6 @@ int main(int argc, char *argv[])
   // eventloop
   while ( !quit )
   {
-    XEvent xev;
-    int num_events;
-
     // Calculate how long it's been since last time.
     howLongAgo = elapsed( start );
     // Delay for framelength - ( howLongAgo + lastPause ) usecs
@@ -306,7 +296,8 @@ int main(int argc, char *argv[])
     swirl( width, height, display, gc, win, bg, fg );
     
     //XFlush(display);
-    num_events = XPending(display);
+    XEvent xev;
+    int num_events = XPending(display);
     while((num_events != 0))
     {
       num_events--;
