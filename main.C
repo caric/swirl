@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #include <sys/time.h>
 #include <unistd.h>
@@ -212,7 +213,8 @@ int main(int argc, char *argv[])
   XSetWMNormalHints(display, win, &size_hints);
   XClassHint classhint;
   classhint.res_name = window_name;
-  classhint.res_class = window_name;
+  char resolved_path[PATH_MAX+1];
+  classhint.res_class = realpath(argv[0], resolved_path); // this tells kicker how to run it; probably a hack; need to set up some X resources to do this for real. this should be the WM_CLASS name in X resources
   XSetClassHint(display, win, &classhint);
 
   // Tell X what events we are interested in.
